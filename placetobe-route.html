@@ -33,7 +33,7 @@
        */
       data: {
         type: Object,
-        computed: '_computeData(active, pattern, route.path)',
+        computed: '_computeData(matches, pattern, route.path)',
         notify: true
       },
 
@@ -51,7 +51,14 @@
        */
       tail: {
         type: Object,
-        computed: '_computeTail(pattern, route.path, active)',
+        computed: '_computeTail(pattern, route.path, matches)',
+        notify: true
+      },
+
+      matches: {
+        type: Boolean,
+        computed: '_computeMatches(pattern, route.*)',
+        reflectToAttribute: true,
         notify: true
       },
 
@@ -61,23 +68,35 @@
         reflectToAttribute: true,
         notify: true
       }
+
+    },
+
+    _computeMatches: function(pattern, routeChanges) {
+      var route = routeChanges.base;
+      if(!route.path) return false;
+
+      var matchesRoutePattern = pattern.replace(this._getVariablesMatchPattern(), '([a-zA-Z0-9-]+)');
+      var parentRouteMatches = (route.matches !== false); //should be exactly `false` since `app-location` will not pass `route.matches`
+      
+      var routeMatches = !!(route.path.match(matchesRoutePattern));
+      return (routeMatches && parentRouteMatches);
     },
 
     _computeActive: function(pattern, routeChanges) {
       var route = routeChanges.base;
       if(!route.path) return false;
 
-      var activeRoutePattern = pattern.replace(this._getVariablesMatchPattern(), '([a-zA-Z0-9-]+)');
-      var parentRouteActive = (route.active !== false); //should be exactly `false` since `app-location` will not pass `route.active`
+      var activeRoutePattern = '^' + pattern.replace(this._getVariablesMatchPattern(), '([a-zA-Z0-9-]+)') + '$';
+      var parentRouteActive = (route.matches !== false); //should be exactly `false` since `app-location` will not pass `route.matches`
       
       var routeIsActive = !!(route.path.match(activeRoutePattern));
       return (routeIsActive && parentRouteActive);
     },
 
-    _computeData: function(active, pattern, routePath) {
+    _computeData: function(matches, pattern, routePath) {
       
       var data = {};
-      if(!active) return data;
+      if(!matches) return data;
 
       var patternVariables = this._parsePatternVariables(pattern);
       var patternPieces = pattern.split(/\//g).slice(1);
@@ -92,7 +111,7 @@
       return data;
     },
 
-    _computeTail: function(pattern, routePath, active) {
+    _computeTail: function(pattern, routePath, matches) {
 
       var patternPieces = pattern.split(/\//g).slice(1);
       var routePathPieces = routePath.split(/\//g).slice(1);
@@ -103,7 +122,7 @@
       return {
         path: tailPath,
         prefix: tailPrefix,
-        active: active
+        matches: matches
       }
 
     },
